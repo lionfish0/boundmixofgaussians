@@ -1,26 +1,35 @@
 import numpy as np
 from scipy import linalg as la
 
+def zeromean_gaussian_1d(x,ls):
+    """Compute the unnormalised gaussian values at locations specified in X, for a Gaussian
+    centred at the origin with variance ls^2"""
+    twotimesls2 = 2*ls**2
+    return np.exp(-(x**2)/twotimesls2)
+    
 def zeromean_gaussian(X,ls):
     """Compute the unnormalised gaussian values at locations specified in X, for a Gaussian
     centred at the origin with covariance a diagonal with values ls^2."""
     twotimesls2 = 2*ls**2
     return np.exp(-np.sum((X**2),1)/twotimesls2)
 
-def findbound(X,W,ls,d,gridspacing,gridsize,ignorenegatives=False):
+def findbound(X,W,ls,d,gridspacing,gridstart,gridend,ignorenegatives=False):
     """
     The centres of the n gaussians in the mixture model are defined as locations in the nxd X matrix
     W is a vector of weights (nx1).
     ls = scalar lengthscale
     d = number of dimensions (usually X.shape[1])
     gridspacing = how far apart the grid squares should be
-    gridsize = scalar - maximum value of grid in all dimensions. Grid starts at origin.
+    gridstart/end = list of start and end values
     ignorenegatives = set to true to have the negative weights set to zero.
     This is necessary if you've performed dimensionality reduction as the negative values may have moved closer to the original datapoints, thus reducing the computed maxima.
     
     The gaussians here aren't normalised. please take this into account when chosing W.
     """
-    mg = np.meshgrid(*([np.arange(0,gridsize,gridspacing)]*d))
+    meshlist = []
+    for start,end in zip(gridstart,gridend):
+        meshlist.append(np.arange(start,end,gridspacing))
+    mg = np.meshgrid(*meshlist) #note: numba doesn't like the * thing
     mesh = []
     for mgitem in mg:
         mesh.append(mgitem.flatten())
