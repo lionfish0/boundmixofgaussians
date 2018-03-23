@@ -13,7 +13,7 @@ def zeromean_gaussian(X,ls):
     twotimesls2 = 2*ls**2
     return np.exp(-np.sum((X**2),1)/twotimesls2)
 
-def findbound(X,W,ls,d,gridspacing,gridstart,gridend,ignorenegatives=False):
+def findbound_lowdim(X,W,ls,d,gridspacing,gridstart,gridend,ignorenegatives=False):
     """
     The centres of the n gaussians in the mixture model are defined as locations in the nxd X matrix
     W is a vector of weights (nx1).
@@ -26,6 +26,9 @@ def findbound(X,W,ls,d,gridspacing,gridstart,gridend,ignorenegatives=False):
     
     The gaussians here aren't normalised. please take this into account when chosing W.
     """
+    #print(X,W,ls,d,gridspacing,gridstart,gridend,ignorenegatives)
+    
+    assert len(gridstart)==d, "Gridstart & gridend should have same number of items as the number of dimensions (%d)" % d
     meshlist = []
     for start,end in zip(gridstart,gridend):
         meshlist.append(np.arange(start,end,gridspacing))
@@ -48,6 +51,29 @@ def findbound(X,W,ls,d,gridspacing,gridstart,gridend,ignorenegatives=False):
     potential_shortfall = (1-zeromean_gaussian(np.array([[p]]),ls))*np.sum(np.abs(W))
     return maxgridpoint+potential_shortfall
 
+
+def findbound(X,W,ls,d,gridspacing,gridstart,gridend,fulldim=False):
+    assert len(gridstart)==d, "Gridstart & gridend should have same number of items as the number of dimensions (%d)" % d
+    if X.shape[1]>3 and not fulldim:
+        #print("Compacting to 3d manifold...")
+        lowd = 3
+        lowdX,evals,evecs,means = PCA(X.copy(),lowd)
+        ignorenegatives = True
+        
+        gridwidths = (gridend-gridstart)/2
+        ##TODO Print warning if not equal as it might be we're handling something that's very "non-spherical"
+        radius = np.sqrt(np.sum(gridwidths**2)) #largest radius
+        centre = gridstart+gridwidths/2
+        lowdcentre = (evecs.T @ centre.T).T
+        gridstart = lowdcentre-radius
+        gridend = lowdcentre+radius
+    else:
+        lowdX = X
+        lowd = X.shape[1]
+        ignorenegatives = False
+        
+    #TODO should we subtract/add gridspacing to the gridstart/gridend
+    return findbound_lowdim(lowdX,W,ls=ls,d=lowd,gridspacing=gridspacing,gridstart=gridstart,gridend=gridend,ignorenegatives=ignorenegatives)
 
 
     
