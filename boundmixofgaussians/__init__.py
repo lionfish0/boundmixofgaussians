@@ -52,11 +52,11 @@ def findbound_lowdim(X,W,ls,d,gridspacing,gridstart,gridend,ignorenegatives=Fals
     return maxgridpoint+potential_shortfall
 
 
-def findbound(X,W,ls,d,gridspacing,gridstart,gridend,fulldim=False):
+def findbound(X,W,ls,d,gridspacing,gridstart,gridend,fulldim=False,forceignorenegatives=False,dimthreshold=3):
     assert len(gridstart)==d, "Gridstart & gridend should have same number of items as the number of dimensions (%d)" % d
-    if X.shape[1]>3 and not fulldim:
+    if X.shape[1]>dimthreshold and not fulldim:
         #print("Compacting to 3d manifold...")
-        lowd = 3
+        lowd = dimthreshold
         lowdX,evals,evecs,means = PCA(X.copy(),lowd)
         ignorenegatives = True
         
@@ -70,7 +70,7 @@ def findbound(X,W,ls,d,gridspacing,gridstart,gridend,fulldim=False):
     else:
         lowdX = X
         lowd = X.shape[1]
-        ignorenegatives = False
+        ignorenegatives = forceignorenegatives
         
     #TODO should we subtract/add gridspacing to the gridstart/gridend
     return findbound_lowdim(lowdX,W,ls=ls,d=lowd,gridspacing=gridspacing,gridstart=gridstart,gridend=gridend,ignorenegatives=ignorenegatives)
