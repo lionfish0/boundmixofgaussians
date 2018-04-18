@@ -1,23 +1,24 @@
 import numpy as np
 from scipy import linalg as la
 
-def zeromean_gaussian_1d(x,ls):
+def zeromean_gaussian_1d(x,ls,v):
     """Compute the unnormalised gaussian values at locations specified in X, for a Gaussian
     centred at the origin with variance ls^2"""
     twotimesls2 = 2*ls**2
-    return np.exp(-(x**2)/twotimesls2)
+    return v*np.exp(-(x**2)/twotimesls2)
     
-def zeromean_gaussian(X,ls):
+def zeromean_gaussian(X,ls,v):
     """Compute the unnormalised gaussian values at locations specified in X, for a Gaussian
     centred at the origin with covariance a diagonal with values ls^2."""
     twotimesls2 = 2*ls**2
-    return np.exp(-np.sum((X**2),1)/twotimesls2)
+    return v*np.exp(-np.sum((X**2),1)/twotimesls2)
 
-def findbound_lowdim(X,W,ls,d,gridspacing,gridstart,gridend,ignorenegatives=False):
+def findbound_lowdim(X,W,ls,v,d,gridspacing,gridstart,gridend,ignorenegatives=False):
     """
     The centres of the n gaussians in the mixture model are defined as locations in the nxd X matrix
     W is a vector of weights (nx1).
     ls = scalar lengthscale
+    v = kernel variance
     d = number of dimensions (usually X.shape[1])
     gridspacing = how far apart the grid squares should be
     gridstart/end = list of start and end values
@@ -44,15 +45,15 @@ def findbound_lowdim(X,W,ls,d,gridspacing,gridstart,gridend,ignorenegatives=Fals
     if ignorenegatives:
         newW[newW<0] = 0
     for i,(x,w) in enumerate(zip(X,newW)):
-        tot += w*zeromean_gaussian(mesh-x,ls)
+        tot += w*zeromean_gaussian(mesh-x,ls,v)
     maxgridpoint = np.max(tot)
     #compute possible additional height between grid points
     p = np.sqrt(d)*gridspacing/2 
-    potential_shortfall = (1-zeromean_gaussian(np.array([[p]]),ls))*np.sum(np.abs(W))
+    potential_shortfall = (1-zeromean_gaussian(np.array([[p]]),ls,v))*np.sum(np.abs(W))
     return maxgridpoint+potential_shortfall
 
 
-def findbound(X,W,ls,d,gridspacing,gridstart,gridend,fulldim=False,forceignorenegatives=False,dimthreshold=3):
+def findbound(X,W,ls,v,d,gridspacing,gridstart,gridend,fulldim=False,forceignorenegatives=False,dimthreshold=3):
     assert len(gridstart)==d, "Gridstart & gridend should have same number of items as the number of dimensions (%d)" % d
     if X.shape[1]>dimthreshold and not fulldim:
         #print("Compacting to 3d manifold...")
@@ -73,7 +74,7 @@ def findbound(X,W,ls,d,gridspacing,gridstart,gridend,fulldim=False,forceignorene
         ignorenegatives = forceignorenegatives
         
     #TODO should we subtract/add gridspacing to the gridstart/gridend
-    return findbound_lowdim(lowdX,W,ls=ls,d=lowd,gridspacing=gridspacing,gridstart=gridstart,gridend=gridend,ignorenegatives=ignorenegatives)
+    return findbound_lowdim(lowdX,W,ls=ls,v=v,d=lowd,gridspacing=gridspacing,gridstart=gridstart,gridend=gridend,ignorenegatives=ignorenegatives)
 
 
     
