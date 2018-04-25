@@ -49,11 +49,26 @@ def findbound_lowdim(X,W,ls,v,d,gridspacing,gridstart,gridend,ignorenegatives=Fa
     maxgridpoint = np.max(tot)
     #compute possible additional height between grid points
     p = np.sqrt(d)*gridspacing/2 
-    potential_shortfall = (1-zeromean_gaussian(np.array([[p]]),ls,v))*np.sum(np.abs(W))
+    potential_shortfall = (v-zeromean_gaussian(np.array([[p]]),ls,v))*np.sum(np.abs(W))
+    
+    print(X,W,maxgridpoint,potential_shortfall)
     return maxgridpoint+potential_shortfall
 
 
-def findbound(X,W,ls,v,d,gridspacing,gridstart,gridend,fulldim=False,forceignorenegatives=False,dimthreshold=3):
+def findbound(X,W,ls,v,d,gridres,gridstart,gridend,fulldim=False,forceignorenegatives=False,dimthreshold=3):
+    """
+    X = input locations
+    W = 'weights' (i.e. heights) of Gaussians
+    ls = lengthscale
+    v = variance
+    d = number of dimensions
+    gridres = number of grid points along longest edge
+    gridstart = d-dimensional coordinate of grid start
+    gridend = d-dimensional coordinate of grid end
+    fulldim = [default false] whether to avoid making the PCA approximation (kicks in if number of dims goes above dimthreshold)
+    forceignorenegatives = [default false] we don't need to ignore negatives if we're not using the PCA approximation
+    dimthreshold = [default 3] the number of dimensions above which we make the low dimensional approximation.
+    """
     assert len(gridstart)==d, "Gridstart & gridend should have same number of items as the number of dimensions (%d)" % d
     if X.shape[1]>dimthreshold and not fulldim:
         #print("Compacting to 3d manifold...")
@@ -72,7 +87,7 @@ def findbound(X,W,ls,v,d,gridspacing,gridstart,gridend,fulldim=False,forceignore
         lowdX = X
         lowd = X.shape[1]
         ignorenegatives = forceignorenegatives
-        
+    gridspacing = np.max(gridend-gridstart)/gridres
     #TODO should we subtract/add gridspacing to the gridstart/gridend
     return findbound_lowdim(lowdX,W,ls=ls,v=v,d=lowd,gridspacing=gridspacing,gridstart=gridstart,gridend=gridend,ignorenegatives=ignorenegatives)
 
