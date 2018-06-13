@@ -51,16 +51,15 @@ def findbound_lowdim(X,W,ls,v,d,gridspacing,gridstart,gridend,ignorenegatives=Fa
     p = np.sqrt(d)*gridspacing/2 
     potential_shortfall = (v-zeromean_gaussian(np.array([[p]]),ls,v))*np.sum(np.abs(W))
     
-    print(X,W,maxgridpoint,potential_shortfall)
+    #print(gridstart,gridend,X.T,W,maxgridpoint,potential_shortfall)
     return maxgridpoint+potential_shortfall
 
 
-def findbound(X,W,ls,v,d,gridres,gridstart,gridend,fulldim=False,forceignorenegatives=False,dimthreshold=3):
+def findbound(X,W,ls,d,gridres,gridstart,gridend,fulldim=False,forceignorenegatives=False,dimthreshold=3):
     """
     X = input locations
     W = 'weights' (i.e. heights) of Gaussians
     ls = lengthscale
-    v = variance
     d = number of dimensions
     gridres = number of grid points along longest edge
     gridstart = d-dimensional coordinate of grid start
@@ -68,7 +67,12 @@ def findbound(X,W,ls,v,d,gridres,gridstart,gridend,fulldim=False,forceignorenega
     fulldim = [default false] whether to avoid making the PCA approximation (kicks in if number of dims goes above dimthreshold)
     forceignorenegatives = [default false] we don't need to ignore negatives if we're not using the PCA approximation
     dimthreshold = [default 3] the number of dimensions above which we make the low dimensional approximation.
+    
+    we have removed the v (variance) parameter, as it is assumed that the heights of the gaussians are equal to the
+    values in W, scaling by 'v' is generally not the right thing to do.
     """
+    v = 1 #this is set to one, as we don't want to scale the Gaussians again!
+    
     assert len(gridstart)==d, "Gridstart & gridend should have same number of items as the number of dimensions (%d)" % d
     if X.shape[1]>dimthreshold and not fulldim:
         #print("Compacting to 3d manifold...")
