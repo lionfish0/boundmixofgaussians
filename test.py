@@ -14,6 +14,9 @@ def test():
     assert np.abs(approx-correct)<1e-6
 
     assert findbound(X=1.0*np.array([[1,2]]),W=1.0*np.array([3]),ls=2.0,d=2,gridres=10,gridstart=1.0*np.array([0,0]),gridend=1.0*np.array([2,2]),dimthreshold=3)==3
+    
+    #assert np.abs(findbound(X=1.0*np.array([[1,2]]),W=1.0*np.array([3]),ls=2.0,d=2,gridres=10,gridstart=1.0*np.array([0,0]),gridend=1.0*np.array([2,2]),dimthreshold=3)--1.5908)<0.01
+    
     W = 1.0*np.array([1]*7)
     ls = 0.3
     #the biggest value in 2d is a single peak from a single training point
