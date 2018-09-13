@@ -184,8 +184,11 @@ def findbound(X,W,ls,d,gridres,gridstart,gridend,fulldim=False,forceignorenegati
     X = np.array(newX)
     W = np.array(newW)
     X,W = mergenegatives(X,W,ls)
-
     
+    if X.shape[0]==0: #if no items,
+        return 0
+    if X.shape[0]==1: #if only one item,
+        return W[0]*v
     if X.shape[1]>dimthreshold and not fulldim:
         #print("Compacting to %d manifold..." % dimthreshold)
         lowd = dimthreshold
