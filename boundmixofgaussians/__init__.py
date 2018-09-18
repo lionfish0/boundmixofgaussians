@@ -52,8 +52,12 @@ def findbound_lowdim(X,W,ls,v,d,gridspacing,gridstart,gridend,ignorenegatives=Fa
     #potential_shortfall = (v-zeromean_gaussian(np.array([[p]]),ls,v))*np.sum(np.abs(W))
     #return maxgridpoint+potential_shortfall
     
+    #this bound works on the assumption that we only have positive weights
+    #if we assume we want to find possible max value m, and we are p away from
+    #it, then the value v, at our grid location is v = m . unit_rbf(p)
+    #rearranging we can see we can find m by dividing v by the unit_rbf.
+    
     maxgridpoint/= zeromean_gaussian_1d(np.array([p]),ls,1)
-    #print(gridstart,gridend,X.T,W,maxgridpoint)
     return maxgridpoint
     
     
