@@ -25,7 +25,7 @@ def findbound_lowdim(X,W,ls,v,d,gridspacing,gridstart,gridend,ignorenegatives=Fa
     ignorenegatives = set to true to have the negative weights set to zero.
     This is necessary if you've performed dimensionality reduction as the negative values may have moved closer to the original datapoints, thus reducing the computed maxima.
     
-    The gaussians here aren't normalised. please take this into account when chosing W.
+    The gaussians here aren't normalised. please take this into account when choosing W.
     """
     #print(X,W,ls,d,gridspacing,gridstart,gridend,ignorenegatives)
     
@@ -49,10 +49,14 @@ def findbound_lowdim(X,W,ls,v,d,gridspacing,gridstart,gridend,ignorenegatives=Fa
     maxgridpoint = np.max(tot)
     #compute possible additional height between grid points
     p = np.sqrt(d)*gridspacing/2 
-    potential_shortfall = (v-zeromean_gaussian(np.array([[p]]),ls,v))*np.sum(np.abs(W))
+    #potential_shortfall = (v-zeromean_gaussian(np.array([[p]]),ls,v))*np.sum(np.abs(W))
+    #return maxgridpoint+potential_shortfall
     
-    #print(gridstart,gridend,X.T,W,maxgridpoint,potential_shortfall)
-    return maxgridpoint+potential_shortfall
+    maxgridpoint/= zeromean_gaussian_1d(p,ls,1)
+    print(gridstart,gridend,X.T,W,maxgridpoint)
+    return maxgridpoint
+    
+    
 
 
 
