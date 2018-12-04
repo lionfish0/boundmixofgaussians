@@ -27,6 +27,8 @@ def findbound_lowdim(X,W,ls,v,d,gridspacing,gridstart,gridend,ignorenegatives=Fa
     
     The gaussians here aren't normalised. please take this into account when choosing W.
     """
+    #print("FINDBOUND_LOWDIM")
+    #print("X,W,ls,d,gridspacing,gridstart,gridend,ignorenegatives:")    
     #print(X,W,ls,d,gridspacing,gridstart,gridend,ignorenegatives)
     
     assert len(gridstart)==d, "Gridstart & gridend should have same number of items as the number of dimensions (%d)" % d
@@ -134,6 +136,8 @@ def mergenegatives(X,W,ls):
         if dist==np.infty: #all points are now negative!
             #print(">>>",end="")
             break
+        if W[nearestpositive]<=0: #this should do the same as the above break
+            break
         offset,newpeak = findpeak(W[nearestpositive],w,dist,ls)
         #print(offset,newpeak)
         vector = (x - X[nearestpositive,:])
@@ -174,7 +178,7 @@ def findbound(X,W,ls,d,gridres,gridstart,gridend,fulldim=False,forceignorenegati
     values in W, scaling by 'v' is generally not the right thing to do.
     """
     v = 1 #this is set to one, as we don't want to scale the Gaussians again!
-    
+    #print("FINDBOUND.......")
     assert len(gridstart)==d, "Gridstart & gridend should have same number of items as the number of dimensions (%d)" % d
     
     #if two points are on top of each other, we can combine them.
@@ -184,6 +188,9 @@ def findbound(X,W,ls,d,gridres,gridstart,gridend,fulldim=False,forceignorenegati
     #so it could be left out, but points colocated causes problems
     #with zero-distances in mergenegatives, so I've left it in.
     #
+    
+    #should we be compacting to low dimensional manifold
+    compact = X.shape[1]>dimthreshold and not fulldim
     newX = []
     newW = []
     for x in np.unique(X,axis=0):
@@ -191,13 +198,24 @@ def findbound(X,W,ls,d,gridres,gridstart,gridend,fulldim=False,forceignorenegati
         newW.append(np.sum(W[(np.where((X==x).all(axis=1))[0])]))
     X = np.array(newX)
     W = np.array(newW)
-    X,W = mergenegatives(X,W,ls)
-    
+    #print(X,W)
+    if compact or forceignorenegatives: #no point merging if we're not going to ignore negative values.
+        #print("Merging Negatives")
+        X,W = mergenegatives(X,W,ls)
+    #print(X,W)
+    #print("X,W:")
+    #print(X,W)
     if X.shape[0]==0: #if no items,
         return 0
     if X.shape[0]==1: #if only one item,
-        return max(0,W[0]*v) #todo: not very efficient
-    if X.shape[1]>dimthreshold and not fulldim:
+    #    return max(0,W[0]*v) #todo: not very efficient
+        
+        #if this single point in X is inside the search grid this will just return zeromean_gaussian([0..0],ls,v)
+        #otherwise the vector passed to zeromean_gaussian will be the distances to the boundary of the search grid.
+        ms = np.max(np.r_[gridstart-X,X-gridend],0)
+        ms[ms<0]=0
+        return W[0]*zeromean_gaussian(ms[None,:],ls,v)
+    if compact and X.shape[0]>1: 
         #print("Compacting to %d manifold..." % dimthreshold)
         lowd = dimthreshold
         lowdX,evals,evecs,means = PCA(X.copy(),lowd)
