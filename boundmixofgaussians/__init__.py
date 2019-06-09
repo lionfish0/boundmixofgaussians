@@ -1,12 +1,14 @@
 import numpy as np
 from scipy import linalg as la
+from scipy.optimize import minimize
 
 def zeromean_gaussian_1d(x,ls,v):
     """Compute the unnormalised gaussian values at locations specified in X, for a Gaussian
     centred at the origin with height v, lengthscale ls"""
     twotimesls2 = 2*ls**2
     return v*np.exp(-(x**2)/twotimesls2)
-    
+
+
 def zeromean_gaussian(X,ls,v):
     """Compute the unnormalised gaussian values at locations specified in X, for a Gaussian
     centred at the origin with covariance a diagonal with values ls^2."""
@@ -34,7 +36,7 @@ def findbound_lowdim(X,W,ls,v,d,gridspacing,gridstart,gridend,ignorenegatives=Fa
     assert len(gridstart)==d, "Gridstart & gridend should have same number of items as the number of dimensions (%d)" % d
     meshlist = []
     for start,end in zip(gridstart,gridend):
-        meshlist.append(np.arange(start,end,gridspacing))
+        meshlist.append(np.arange(start,end+1e-6,gridspacing))
     mg = np.meshgrid(*meshlist) #note: numba doesn't like the * thing
     mesh = []
     for mgitem in mg:
@@ -48,6 +50,7 @@ def findbound_lowdim(X,W,ls,v,d,gridspacing,gridstart,gridend,ignorenegatives=Fa
         newW[newW<0] = 0
     for i,(x,w) in enumerate(zip(X,newW)):
         tot += w*zeromean_gaussian(mesh-x,ls,v)
+    print(mesh[np.argmax(tot)])
     maxgridpoint = np.max(tot)
     #compute possible additional height between grid points
     p = np.sqrt(d)*gridspacing/2 
@@ -104,16 +107,68 @@ def findpeak(w1,w2,dist,ls):
     #print(w1,w2,dist,ls)
     assert w1>0
     assert w2<0
+    #print("%0.8f,%0.8f" % (w1/w2,dist/ls))
     x = 0
-    lr = 0.7
-    #for it in range(20):
-    oldx = np.inf
-    while np.abs(oldx-x)>1e-3: #TODO Pick something sensible for this
-        oldx = x
-        x-=lr*compute_grad(w1,w2,x,ls,dist)
-        lr*=0.97 #TODO and this
-        
-    return x, compute_sum(w1,w2,x,ls,dist)
+#    #lr = 10
+#    #for it in range(20):
+#    oldx = np.inf
+##    for it in range(10):
+#    while np.abs(oldx-x)>1e-5: #TODO Pick something sensible for this
+#        oldx = x
+#        g = compute_grad(w1,w2,x,ls,dist)
+#        x-=g*lr
+#        lr*=lr_scaling #0.98 #TODO and this
+#    #print(w1,w2,dist,ls)
+#    #print(compute_sum(w1,w2,x-0.2,ls,dist),compute_sum(w1,w2,x,ls,dist),compute_sum(w1,w2,x+0.2,ls,dist))
+    #return x, compute_sum(w1,w2,x,ls,dist)
+    res = minimize(lambda x: -compute_sum(w1,w2,x,ls,dist),x0=-1,method='BFGS',jac=lambda x: compute_grad(w1,w2,x,ls,dist),tol=dist/1000) 
+    return res.x[0], -res.fun
+    
+#prepare lookup tables    
+try:
+    lookup_table_v = np.load(open('lookup_table_v.np','rb'))
+    lookup_table_x = np.load(open('lookup_table_x.np','rb'))
+except FileNotFoundError:
+    print("Failed to find lookup table. Recomputing")
+    w_ratios = np.arange(-15,15,0.02)
+    distratios = np.arange(0,15,0.02)
+    lookup_table_x = np.zeros([len(w_ratios),len(distratios)])
+    lookup_table_v = np.zeros([len(w_ratios),len(distratios)])
+    for i,w_ratio_log in enumerate(w_ratios):
+        print(".",end="")
+        for j,distratio in enumerate(distratios):
+            x,v = findpeak(np.exp(w_ratio_log),-1.0,distratio,1.0)
+            lookup_table_x[i,j] = x
+            lookup_table_v[i,j] = v
+    print("Done. Saving tables.")
+    np.save(open('lookup_table_v.np','wb'),lookup_table_v)
+    np.save(open('lookup_table_x.np','wb'),lookup_table_x)    
+
+def quick_findpeak(w1,w2,dist,ls):
+    if (w2>-3e-6): #there's no point subtracting this negative as it's so small
+        return 0,w1
+    wratio = np.log(-w1/w2)
+    distratio = dist/ls
+    idx0 = int((wratio+15)*50)
+    idx1 = int((distratio+0)*50)
+    #a,b = findpeak(np.exp(wratio),-1,distratio,1)
+    #return a*ls, b*w2
+    #print(lookup_table_x[idx0,idx1]*ls)
+    #print(lookup_table_x[idx0+1,idx1]*ls)
+    #print(lookup_table_x[idx0,idx1+1]*ls)
+    #print(lookup_table_x[idx0+1,idx1+1]*ls)
+    #print(lookup_table_v[idx0,idx1]*-w2)
+    #print(lookup_table_v[idx0+1,idx1]*-w2)
+    #print(lookup_table_v[idx0,idx1+1]*-w2)
+    #print(lookup_table_v[idx0+1,idx1+1]*-w2)    
+    #TODO INTERPOLATE!
+    try:
+        return lookup_table_x[idx0,idx1]*ls, lookup_table_v[idx0,idx1]*-w2 #*ls, *w2
+    except IndexError:
+    
+        print("Lookup table miss: ")
+        print(w1,w2,dist,ls)
+        return findpeak(w1,w2,dist,ls)
 
 def mergenegatives(X,W,ls):
     
@@ -138,7 +193,8 @@ def mergenegatives(X,W,ls):
             break
         if W[nearestpositive]<=0: #this should do the same as the above break
             break
-        offset,newpeak = findpeak(W[nearestpositive],w,dist,ls)
+        offset,newpeak = quick_findpeak(W[nearestpositive],w,dist,ls) #findpeak(W[nearestpositive],w,dist,ls)
+        #print(offset,newpeak)
         #print(offset,newpeak)
         vector = (x - X[nearestpositive,:])
         #offset value is positive in direction from +ve weight to -ve weight
